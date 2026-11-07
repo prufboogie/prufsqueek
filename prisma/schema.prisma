@@ -1,0 +1,445 @@
+// The Last District. Game state lives here; who holds a Squeek always comes from Sepolia.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastSeenAt  DateTime  @default(now()) @map("last_seen_at")
+  wallet      Wallet?
+  profile     PlayerProfile?
+  shelters    Shelter[]
+  memberships ShelterMember[]
+  badges      PlayerBadge[]
+  activity    ActivityLog[]
+  wins        RewardDistribution[]
+  claims      RewardClaim[]
+  eligibility SupplyDropEligibility[]
+
+  @@map("users")
+}
+
+/// One wallet per player for the MVP. Stored checksummed.
+model Wallet {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  userId    String   @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("wallets")
+}
+
+model AuthNonce {
+  nonce     String   @id
+  expiresAt DateTime @map("expires_at")
+
+  @@map("auth_nonces")
+}
+
+model PlayerProfile {
+  userId      String   @id @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  callsign    String?
+  /// Selected title key; must be one the player has earned.
+  title       String?
+  /// Game-only progression. Never changes reward odds.
+  xp          Int      @default(0)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("player_profiles")
+}
+
+model PlayerBadge {
+  userId   String   @map("user_id")
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key      String
+  earnedAt DateTime @default(now()) @map("earned_at")
+
+  @@id([userId, key])
+  @@map("player_badges")
+}
+
+enum SurvivorStatus {
+  ACTIVE
+  /// Burned as the donor in an on-chain merge.
+  GONE
+}
+
+/// A cached view of one Squeek. Official fields come from tokenURI and level(); nothing here is invented.
+model Survivor {
+  tokenId     Int            @id @map("token_id")
+  name        String
+  level       Int
+  imageUri    String         @map("image_uri") @db.Text
+  attributes  Json
+  status      SurvivorStatus @default(ACTIVE)
+  /// Last verified holder: the wallet, or the depositor when the Squeek sits in SqueekStaking.
+  holder      String?
+  custody     String?
+  checkedAt   DateTime?      @map("checked_at")
+  fetchedAt   DateTime       @default(now()) @map("fetched_at")
+  membership  ShelterMember?
+  stays       ShelterStay[]
+
+  @@index([holder])
+  @@map("survivors")
+}
+
+enum ShelterStatus {
+  ACTIVE
+  ABANDONED
+}
+
+model Shelter {
+  id             String          @id @default(cuid())
+  name           String
+  ownerId        String          @map("owner_id")
+  owner          User            @relation(fields: [ownerId], references: [id])
+  /// Unique among ACTIVE shelters (partial index in the migration).
+  primaryTokenId Int             @map("primary_token_id")
+  status         ShelterStatus   @default(ACTIVE)
+  theme          String          @default("bunker")
+  /// Development points, game-only: earned from supply drops and staffed days.
+  xp             Int             @default(0)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  abandonedAt    DateTime?       @map("abandoned_at")
+  abandonReason  String?         @map("abandon_reason")
+  members        ShelterMember[]
+  stays          ShelterStay[]
+  resources      ShelterResource[]
+  eligibility    SupplyDropEligibility[]
+  wins           RewardDistribution[]
+  activity       ActivityLog[]
+
+  @@index([ownerId, status])
+  @@index([status])
+  @@map("shelters")
+}
+
+enum MemberRole {
+  PRIMARY
+  RESIDENT
+}
+
+/// Current residents only. tokenId is unique: a Survivor is in one shelter or none.
+model ShelterMember {
+  id        String     @id @default(cuid())
+  shelterId String     @map("shelter_id")
+  shelter   Shelter    @relation(fields: [shelterId], references: [id])
+  tokenId   Int        @unique @map("token_id")
+  survivor  Survivor   @relation(fields: [tokenId], references: [tokenId])
+  userId    String     @map("user_id")
+  user      User       @relation(fields: [userId], references: [id])
+  role      MemberRole
+  joinedAt  DateTime   @default(now()) @map("joined_at")
+
+  @@index([shelterId])
+  @@index([userId])
+  @@map("shelter_members")
+}
+
+/// Past residencies, kept for history after a Survivor leaves.
+model ShelterStay {
+  id        String   @id @default(cuid())
+  shelterId String   @map("shelter_id")
+  shelter   Shelter  @relation(fields: [shelterId], references: [id])
+  tokenId   Int      @map("token_id")
+  survivor  Survivor @relation(fields: [tokenId], references: [tokenId])
+  role      MemberRole
+  joinedAt  DateTime @map("joined_at")
+  leftAt    DateTime @default(now()) @map("left_at")
+  reason    String
+
+  @@index([tokenId])
+  @@index([shelterId])
+  @@map("shelter_stays")
+}
+
+/// Supplies a shelter has received. Delivered only by supply drops; no trading, no spending yet.
+model ShelterResource {
+  shelterId String   @map("shelter_id")
+  shelter   Shelter  @relation(fields: [shelterId], references: [id])
+  kind      String
+  amount    Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([shelterId, kind])
+  @@map("shelter_resources")
+}
+
+enum DropStatus {
+  SCHEDULED
+  OPEN
+  /// Eligibility frozen; waiting for the entropy block.
+  SNAPSHOT
+  /// Winners drawn and published.
+  DRAWN
+  CANCELLED
+}
+
+enum TicketRule {
+  /// One ticket per counted Survivor in the shelter.
+  PER_SURVIVOR
+  /// One ticket per eligible shelter.
+  FLAT
+}
+
+model SupplyDrop {
+  id                String      @id @default(cuid())
+  number            Int         @unique @default(autoincrement())
+  name              String
+  kind              String      @default("standard")
+  status            DropStatus  @default(SCHEDULED)
+  startsAt          DateTime    @map("starts_at")
+  /// Snapshot time.
+  endsAt            DateTime    @map("ends_at")
+  minSurvivors      Int         @default(3) @map("min_survivors")
+  minResidencyHours Int         @default(12) @map("min_residency_hours")
+  ticketRule        TicketRule  @default(PER_SURVIVOR) @map("ticket_rule")
+  maxWinsPerPlayer  Int         @default(1) @map("max_wins_per_player")
+  /// keccak256 of the secret seed, published from creation.
+  seedHash          String      @map("seed_hash")
+  /// AES-GCM sealed seed; revealed in clear only after the draw.
+  seedSealed        String      @map("seed_sealed")
+  seed              String?
+  snapshotAt        DateTime?   @map("snapshot_at")
+  snapshotHash      String?     @map("snapshot_hash")
+  snapshotBlock     Int?        @map("snapshot_block")
+  totalTickets      Int?        @map("total_tickets")
+  /// Reward units the draw filled slots for, fixed at the draw.
+  rewardSlots       Int?        @map("reward_slots")
+  entropyBlock      Int?        @map("entropy_block")
+  entropyBlockHash  String?     @map("entropy_block_hash")
+  randomness        String?
+  drawnAt           DateTime?   @map("drawn_at")
+  createdBy         String      @default("scheduler") @map("created_by")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  cancelReason      String?     @map("cancel_reason")
+  eligibility       SupplyDropEligibility[]
+  rewards           Reward[]
+  distributions     RewardDistribution[]
+  activity          ActivityLog[]
+
+  @@index([status, endsAt])
+  @@map("supply_drops")
+}
+
+model SupplyDropEligibility {
+  id          String     @id @default(cuid())
+  dropId      String     @map("drop_id")
+  drop        SupplyDrop @relation(fields: [dropId], references: [id])
+  shelterId   String     @map("shelter_id")
+  shelter     Shelter    @relation(fields: [shelterId], references: [id])
+  userId      String     @map("user_id")
+  user        User       @relation(fields: [userId], references: [id])
+  wallet      String
+  shelterName String     @map("shelter_name")
+  eligible    Boolean
+  tickets     Int
+  /// Survivors that counted, ascending.
+  counted     Int[]
+  /// Survivors that didn't, with the reason for each.
+  excluded    Json
+  reason      String
+  /// Position of this shelter's first ticket in the snapshot order.
+  ticketStart Int?       @map("ticket_start")
+
+  @@unique([dropId, shelterId])
+  @@index([userId])
+  @@map("supply_drop_eligibility")
+}
+
+model RewardVault {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  createdAt DateTime         @default(now()) @map("created_at")
+  campaigns RewardCampaign[]
+
+  @@map("reward_vaults")
+}
+
+enum PartnerStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+}
+
+model Partner {
+  id          String           @id @default(cuid())
+  name        String
+  website     String?
+  description String?
+  status      PartnerStatus    @default(PROSPECT)
+  /// Set only by an admin once the partnership is confirmed in writing.
+  verified    Boolean          @default(false)
+  isDemo      Boolean          @default(false) @map("is_demo")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  campaigns   RewardCampaign[]
+
+  @@map("partners")
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  ENDED
+}
+
+model RewardCampaign {
+  id           String         @id @default(cuid())
+  vaultId      String         @map("vault_id")
+  vault        RewardVault    @relation(fields: [vaultId], references: [id])
+  partnerId    String?        @map("partner_id")
+  partner      Partner?       @relation(fields: [partnerId], references: [id])
+  title        String
+  description  String
+  requirements String?
+  status       CampaignStatus @default(DRAFT)
+  isDemo       Boolean        @default(false) @map("is_demo")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  rewards      Reward[]
+
+  @@map("reward_campaigns")
+}
+
+enum RewardKind {
+  PARTNER_NFT
+  WHITELIST
+  FREE_MINT
+  COLLECTIBLE
+  ECOSYSTEM
+  OTHER
+}
+
+enum RewardStatus {
+  AVAILABLE
+  ALLOCATED
+  DISTRIBUTED
+  WITHDRAWN
+}
+
+/// A batch of identical reward units. quantity = number of winners it can serve.
+model Reward {
+  id          String       @id @default(cuid())
+  campaignId  String       @map("campaign_id")
+  campaign    RewardCampaign @relation(fields: [campaignId], references: [id])
+  kind        RewardKind
+  title       String
+  description String
+  quantity    Int
+  isDemo      Boolean      @default(false) @map("is_demo")
+  status      RewardStatus @default(AVAILABLE)
+  dropId      String?      @map("drop_id")
+  drop        SupplyDrop?  @relation(fields: [dropId], references: [id])
+  /// Order in the drop's draw: lower sort is drawn first.
+  sort        Int          @default(0)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  distributions RewardDistribution[]
+
+  @@index([dropId])
+  @@map("rewards")
+}
+
+enum DistributionStatus {
+  ALLOCATED
+  CLAIMED
+  FULFILLED
+  VOID
+  EXPIRED
+}
+
+model RewardDistribution {
+  id         String             @id @default(cuid())
+  dropId     String             @map("drop_id")
+  drop       SupplyDrop         @relation(fields: [dropId], references: [id])
+  rewardId   String             @map("reward_id")
+  reward     Reward             @relation(fields: [rewardId], references: [id])
+  /// Draw order, 0-based. Unique per drop.
+  slot       Int
+  ticket     Int
+  shelterId  String             @map("shelter_id")
+  shelter    Shelter            @relation(fields: [shelterId], references: [id])
+  userId     String             @map("user_id")
+  user       User               @relation(fields: [userId], references: [id])
+  wallet     String
+  status     DistributionStatus @default(ALLOCATED)
+  claimBy    DateTime           @map("claim_by")
+  createdAt  DateTime           @default(now()) @map("created_at")
+  note       String?
+  claim      RewardClaim?
+
+  @@unique([dropId, slot])
+  /// One reward per shelter per drop.
+  @@unique([dropId, shelterId])
+  @@index([userId])
+  @@map("reward_distributions")
+}
+
+model RewardClaim {
+  id             String             @id @default(cuid())
+  distributionId String             @unique @map("distribution_id")
+  distribution   RewardDistribution @relation(fields: [distributionId], references: [id])
+  userId         String             @map("user_id")
+  user           User               @relation(fields: [userId], references: [id])
+  wallet         String
+  claimedAt      DateTime           @default(now()) @map("claimed_at")
+  fulfilledAt    DateTime?          @map("fulfilled_at")
+  fulfilmentNote String?            @map("fulfilment_note")
+
+  @@map("reward_claims")
+}
+
+model ActivityLog {
+  id        String      @id @default(cuid())
+  createdAt DateTime    @default(now()) @map("created_at")
+  kind      String
+  message   String
+  userId    String?     @map("user_id")
+  user      User?       @relation(fields: [userId], references: [id])
+  shelterId String?     @map("shelter_id")
+  shelter   Shelter?    @relation(fields: [shelterId], references: [id])
+  tokenId   Int?        @map("token_id")
+  dropId    String?     @map("drop_id")
+  drop      SupplyDrop? @relation(fields: [dropId], references: [id])
+  actor     String      @default("player")
+  data      Json?
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([shelterId, createdAt])
+  @@index([tokenId, createdAt])
+  @@index([kind])
+  @@map("activity_logs")
+}
+
+/// Precomputed rankings, rebuilt by the scheduler from recorded data.
+model LeaderboardEntry {
+  board      String
+  rank       Int
+  userId     String?  @map("user_id")
+  shelterId  String?  @map("shelter_id")
+  label      String
+  wallet     String?
+  value      Int
+  computedAt DateTime @map("computed_at")
+
+  @@id([board, rank])
+  @@map("leaderboard_entries")
+}
+
+model ErrorLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  scope     String
+  message   String
+
+  @@index([createdAt])
+  @@map("error_logs")
+}

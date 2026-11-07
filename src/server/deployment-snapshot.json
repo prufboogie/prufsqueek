@@ -1,0 +1,16 @@
+{
+ "chainId": 11155111,
+ "release": "core-sepolia-20261103",
+ "contracts": {
+  "SqueekCore": {
+   "address": "0xfd6c166d4b8e2962e65746a13e5a0797cd4de0c4"
+  },
+  "SqueekNFT": {
+   "address": "0xc4c7982657f00509548f3a3a41db7fa439a6856b",
+   "runtimeHash": "0xa378da21bde37bb0f4c4f482d3f7c502d59d31551521d64ee297d37aa6d88b8c"
+  },
+  "SqueekStaking": {
+   "address": "0x50fd1780526c3186a0c037c7622203bc4fb611ca"
+  }
+ }
+}

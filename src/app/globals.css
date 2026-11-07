@@ -1,0 +1,81 @@
+@import "@fontsource/big-shoulders-stencil-display/700";
+@import "@fontsource/big-shoulders-stencil-display/900";
+@import "@fontsource/barlow/400";
+@import "@fontsource/barlow/500";
+@import "@fontsource/barlow/600";
+@import "@fontsource/ibm-plex-mono/400";
+@import "@fontsource/ibm-plex-mono/500";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .85  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+html { background: #0a0c0b; }
+body {
+  @apply bg-ash-950 font-body text-bone antialiased;
+  background-image:
+    radial-gradient(1200px 600px at 80% -10%, rgba(242,169,59,.07), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(127,161,184,.06), transparent 60%),
+    var(--grain);
+  min-height: 100svh;
+}
+
+::selection { background: rgba(242,169,59,.35); }
+
+@layer components {
+  .stencil { @apply font-stencil uppercase tracking-[0.04em]; }
+  .data { @apply font-mono text-[0.8rem] tracking-tight; }
+  .eyebrow { @apply font-mono text-[0.68rem] uppercase tracking-[0.18em] text-bone-mute; }
+
+  /* A riveted steel plate. */
+  .plate {
+    @apply relative rounded-[4px] border border-ash-600/80 bg-ash-850/90;
+    background-image: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.12)), var(--grain);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 10px 30px -12px rgba(0,0,0,.7);
+  }
+  .plate-bolts::before, .plate-bolts::after {
+    content: ""; position: absolute; top: 7px; width: 5px; height: 5px; border-radius: 9999px;
+    background: radial-gradient(circle at 35% 35%, #6b736d, #262c28 70%);
+    box-shadow: 0 1px 0 rgba(0,0,0,.6);
+  }
+  .plate-bolts::before { left: 7px; }
+  .plate-bolts::after { right: 7px; }
+
+  .hazard-tape {
+    background: repeating-linear-gradient(-45deg, #f2a93b 0 12px, #141816 12px 24px);
+  }
+  .scanlines {
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-[3px] border px-4 py-2 font-stencil text-[1.05rem] uppercase tracking-[0.06em] transition
+      disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hazard;
+  }
+  .btn-hazard { @apply border-hazard-deep bg-hazard text-ash-950 hover:bg-hazard-glow active:translate-y-px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
+  .btn-steel { @apply border-ash-500 bg-ash-700 text-bone hover:border-bone-faint hover:bg-ash-600 active:translate-y-px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.3); }
+  .btn-ghost { @apply border-transparent bg-transparent text-bone-dim hover:text-bone hover:bg-ash-800; }
+  .btn-danger { @apply border-rust-deep bg-rust/90 text-bone hover:bg-rust active:translate-y-px; }
+
+  .chip { @apply inline-flex items-center gap-1.5 rounded-[3px] border border-ash-600 bg-ash-800 px-2 py-0.5 font-mono text-[0.7rem] uppercase tracking-wider text-bone-dim; }
+  .chip-signal { @apply border-signal-deep/60 bg-signal/10 text-signal; }
+  .chip-hazard { @apply border-hazard-deep/60 bg-hazard/10 text-hazard; }
+  .chip-rust { @apply border-rust-deep/70 bg-rust/10 text-rust; }
+  .chip-steel { @apply border-steel-deep/70 bg-steel/10 text-steel; }
+
+  .field {
+    @apply w-full rounded-[3px] border border-ash-600 bg-ash-950/80 px-3 py-2 font-mono text-sm text-bone placeholder:text-bone-faint
+      focus:border-hazard focus:outline-none focus:ring-1 focus:ring-hazard/50;
+  }
+  .link { @apply text-hazard underline decoration-hazard/40 underline-offset-2 hover:decoration-hazard; }
+  .thin-scrollbar { scrollbar-width: thin; scrollbar-color: #2f3732 transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
