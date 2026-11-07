@@ -60,7 +60,7 @@ export function useFakeChain() {
 
 export async function resetDb() {
   await db.$executeRawUnsafe(`TRUNCATE users, wallets, auth_nonces, player_profiles, player_badges, survivors, shelters, shelter_members, shelter_stays, shelter_resources,
-    supply_drops, supply_drop_eligibility, reward_vaults, partners, reward_campaigns, rewards, reward_distributions, reward_claims, activity_logs, leaderboard_entries, error_logs RESTART IDENTITY CASCADE`);
+    supply_drops, supply_drop_eligibility, reward_vaults, partners, reward_campaigns, rewards, reward_distributions, reward_claims, activity_logs, leaderboard_entries, error_logs, run_scores RESTART IDENTITY CASCADE`);
   clearLeaderboardCache();
 }
 

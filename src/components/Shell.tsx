@@ -12,6 +12,7 @@ import { ConnectButton, ConnectModal } from "./wallet/ConnectModal";
 
 const NAV = [
   { href: "/", label: "District", icon: "M3 20h18M5 20V9l4-3 4 3v11M13 20v-7h6v7M8 12h2M8 16h2" },
+  { href: "/run", label: "Ash Run", icon: "M13 4a2 2 0 1 0 0-.01M9 21l3-6 3 3v4M7 12l3-4 4 1 3 3 3-1M10 8l-2 6" },
   { href: "/survivors", label: "Survivors", icon: "M8 7a3 3 0 1 0 0-.01M16 7a3 3 0 1 0 0-.01M4 20c0-4 3-7 8-7s8 3 8 7" },
   { href: "/shelters", label: "Shelters", icon: "M3 11 12 4l9 7v9H3zM9 20v-6h6v6" },
   { href: "/stacking", label: "Stacking", icon: "M4 17h16M6 13h12M8 9h8M10 5h4" },
@@ -87,6 +88,16 @@ function Account() {
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+  // Ash Run takes the whole screen.
+  if (path === "/run") {
+    return (
+      <>
+        {children}
+        <ConnectModal />
+        <Toasts />
+      </>
+    );
+  }
   return (
     <div className="min-h-svh">
       <div className="hazard-tape h-1.5 w-full opacity-80" />

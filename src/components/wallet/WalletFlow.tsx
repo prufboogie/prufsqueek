@@ -6,24 +6,16 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { getAddress } from "viem";
-import { createConfig, http, injected, useAccount, useConnect, useDisconnect, useSignMessage, WagmiProvider } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useSignMessage, WagmiProvider } from "wagmi";
 import { sepolia } from "wagmi/chains";
-// Not the wagmi/connectors barrel: it drags in every vendor SDK. See next.config.mjs.
-import { walletConnect } from "wagmi-walletconnect";
+import { walletConfig } from "./config";
 import { api, ApiError } from "@/client/api";
 import { shortAddress } from "@/client/format";
 import { toast } from "@/client/store";
 import type { Me } from "@/client/types";
 import { signInMessage } from "@/shared/auth-message";
 
-const wcId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
-const config = createConfig({
-  chains: [sepolia],
-  multiInjectedProviderDiscovery: true,
-  connectors: [injected(), ...(wcId ? [walletConnect({ projectId: wcId, showQrModal: true })] : [])],
-  transports: { [sepolia.id]: http() },
-  ssr: false,
-});
+const config = walletConfig;
 const walletQueries = new QueryClient();
 
 function Flow({ onDone, appQueries }: { onDone: () => void; appQueries: QueryClient }) {

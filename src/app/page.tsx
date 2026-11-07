@@ -19,6 +19,18 @@ export default function DistrictPage() {
     <div className="space-y-6">
       {error && <ErrorBox error={error} retry={() => refetch()} />}
 
+      <Link href="/run" className="group relative block overflow-hidden rounded-[4px] border border-rust/60 bg-gradient-to-r from-rust-deep/60 via-ash-900 to-ash-900 p-5 transition hover:border-hazard sm:p-6">
+        <div className="hazard-tape absolute inset-x-0 top-0 h-1 opacity-80" />
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="eyebrow flex items-center gap-2 text-rust"><span className="h-1.5 w-1.5 animate-flicker rounded-full bg-rust" />New · free to play with any wallet</p>
+            <p className="stencil mt-1 text-5xl leading-none sm:text-6xl">Ash <span className="text-hazard">Run</span></p>
+            <p className="mt-2 max-w-lg text-sm text-bone-dim">The swarm broke through the wall. Dodge wrecks, vault barricades, slide under girders, outrun the trucks. Three lanes, no brakes.</p>
+          </div>
+          <span className="btn btn-hazard px-8 py-3 text-2xl group-hover:scale-105">Play now →</span>
+        </div>
+      </Link>
+
       {/* Hero */}
       <DistrictMap shelters={mine?.shelterList ?? []} dropOpen={next?.status === "OPEN"} height={signedIn ? 280 : 380}>
         <div className={`flex flex-1 flex-col justify-between gap-6 bg-gradient-to-r from-ash-950/85 via-ash-950/40 to-transparent p-5 sm:p-8 ${signedIn ? "pb-28" : ""}`}>

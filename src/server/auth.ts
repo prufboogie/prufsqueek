@@ -25,16 +25,17 @@ export async function verifyWallet(input: z.infer<typeof verifySchema>, host: st
   // Delete-to-claim: a nonce works exactly once.
   const claimed = await db.authNonce.deleteMany({ where: { nonce: input.nonce, expiresAt: { gte: new Date() } } });
   if (claimed.count === 0) throw new GameError("bad_nonce", 400, "That sign-in request expired. Try again.");
-  const message = signInMessage(address, input.nonce, host);
-  const signature = input.signature as `0x${string}`;
-  let valid = await verifyMessage({ address, message, signature }).catch(() => false);
-  if (!valid) {
-    // Smart-contract wallets (ERC-1271) verify on-chain.
-    const client = createPublicClient({ chain: sepolia, transport: http(process.env.SEPOLIA_RPC_URLS?.split(",")[0]?.trim() || "https://sepolia.gateway.tenderly.co") });
-    valid = await client.verifyMessage({ address, message, signature }).catch(() => false);
-  }
-  if (!valid) throw new GameError("bad_signature", 401, "That signature doesn't match the wallet.");
+  if (!(await signedBy(address, signInMessage(address, input.nonce, host), input.signature))) throw new GameError("bad_signature", 401, "That signature doesn't match the wallet.");
   return signInAddress(address);
+}
+
+/** True when `address` signed `message`. Smart-contract wallets (ERC-1271) are checked on Sepolia. */
+export async function signedBy(address: `0x${string}`, message: string, signature: string) {
+  if (!/^0x[0-9a-fA-F]+$/.test(signature)) return false;
+  const sig = signature as `0x${string}`;
+  if (await verifyMessage({ address, message, signature: sig }).catch(() => false)) return true;
+  const client = createPublicClient({ chain: sepolia, transport: http(process.env.SEPOLIA_RPC_URLS?.split(",")[0]?.trim() || "https://sepolia.gateway.tenderly.co") });
+  return client.verifyMessage({ address, message, signature: sig }).catch(() => false);
 }
 
 /** Finds or creates the player for a proven address. */

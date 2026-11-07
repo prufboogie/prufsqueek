@@ -443,3 +443,23 @@ model ErrorLog {
   @@index([createdAt])
   @@map("error_logs")
 }
+
+/// Ash Run scores. The score is recomputed on the server from distance and coins.
+model RunScore {
+  id         String   @id @default(cuid())
+  /// The server-issued seed; unique, so a run can only be saved once.
+  seed       String   @unique
+  userId     String?  @map("user_id")
+  name       String
+  guest      Boolean  @default(true)
+  tokenId    Int?     @map("token_id")
+  score      Int
+  distance   Int
+  coins      Int
+  durationMs Int      @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([score])
+  @@index([createdAt])
+  @@map("run_scores")
+}
