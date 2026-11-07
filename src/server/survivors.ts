@@ -90,18 +90,22 @@ export async function reconcileMembers(where: { userId?: string; shelterId?: str
   return { removed: lost.length };
 }
 
-export type SyncResult = { source: "api" | "chain"; wallet: Address; tokenIds: number[]; removed: number };
+export type SyncResult = { source: "api" | "browser" | "chain"; wallet: Address; tokenIds: number[]; removed: number };
 
 /**
  * Brings a player's Survivors up to date. The official API lists what the wallet holds; Survivors
  * the game thought were theirs but aren't listed are re-read from the chain before anything is changed.
  */
-export async function syncPlayer(userId: string): Promise<SyncResult> {
+/**
+ * `hint` is the browser's own read of the official API, for hosts where the API blocks the server.
+ * It is only a list of ids to check: every one is re-read on-chain before it counts.
+ */
+export async function syncPlayer(userId: string, hint: number[] = []): Promise<SyncResult> {
   const address = await walletOf(userId);
   const wallet = effectiveWallet(address);
   const listing = await chain().listWallet(wallet);
   let tokenIds: number[];
-  let source: "api" | "chain" = "api";
+  let source: SyncResult["source"] = "api";
   if (listing.status === "available") {
     tokenIds = listing.tokens.map((t) => t.tokenId);
     const levels = new Map(listing.tokens.map((t) => [t.tokenId, t]));
@@ -120,10 +124,17 @@ export async function syncPlayer(userId: string): Promise<SyncResult> {
       }
     }
   } else {
-    // The API is down: fall back to what we already know, re-verified on-chain.
-    source = "chain";
-    const known = await db.survivor.findMany({ where: { OR: [{ holder: wallet }, { membership: { userId } }] }, select: { tokenId: true } });
-    const h = await chain().holders(known.map((k) => k.tokenId));
+    // The API won't answer this server: use what the browser listed and what we already know, all re-verified on-chain.
+    source = hint.length ? "browser" : "chain";
+    const rows = await db.survivor.findMany({ where: { OR: [{ holder: wallet }, { membership: { userId } }] }, select: { tokenId: true } });
+    const ids = [...new Set([...rows.map((r) => r.tokenId), ...hint.filter((t) => Number.isInteger(t) && t >= 1 && t <= 9999).slice(0, 500)])];
+    const h = await chain().holders(ids);
+    for (const id of ids) {
+      const x = h.get(id);
+      if (x?.holder === wallet && !rows.some((r) => r.tokenId === id)) await ensureSurvivor(id, x);
+    }
+    // Rows we already had, plus hinted ids the wallet really holds. Anything else in the hint is ignored.
+    const known = ids.map((tokenId) => ({ tokenId })).filter((k) => rows.some((r) => r.tokenId === k.tokenId) || h.get(k.tokenId)?.holder === wallet);
     tokenIds = [];
     for (const k of known) {
       const x = h.get(k.tokenId);

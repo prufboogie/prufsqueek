@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { shortAddress } from "@/client/format";
-import { useApi, useMe } from "@/client/hooks";
+import { useApi, useMe, useMySurvivors } from "@/client/hooks";
 import type { MySurvivors, SurvivorItem } from "@/client/types";
 import { LevelPip, SurvivorArt } from "@/components/game";
 import { Gate } from "@/components/Shell";
@@ -21,7 +21,7 @@ export default function SurvivorsPage() {
 
 function Roster() {
   const { data: me } = useMe();
-  const { data, error, isLoading, refetch } = useApi<MySurvivors>("/api/survivors");
+  const { data, error, isLoading, refetch } = useMySurvivors();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
   const list = useMemo(() => {
     const all = data?.survivors ?? [];

@@ -29,8 +29,8 @@ export async function me(userId: string | null) {
 }
 
 /** My Survivors: synced with the chain, joined with where each one is sheltered. */
-export async function mySurvivors(userId: string) {
-  const sync = await syncPlayer(userId);
+export async function mySurvivors(userId: string, hint: number[] = []) {
+  const sync = await syncPlayer(userId, hint);
   const rows = await db.survivor.findMany({
     where: { tokenId: { in: sync.tokenIds } },
     include: { membership: { include: { shelter: true } } },

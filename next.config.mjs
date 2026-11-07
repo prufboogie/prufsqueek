@@ -9,6 +9,11 @@ const nextConfig = {
   outputFileTracingRoot: root,
   serverExternalPackages: ["@prisma/client"],
   images: { unoptimized: true },
+  // Share cards read these fonts at runtime, so the tracer can't see them on its own.
+  outputFileTracingIncludes: {
+    "/shelters/[id]/opengraph-image": ["./node_modules/@fontsource/big-shoulders-stencil-display/files/*-latin-900-normal.woff", "./node_modules/@fontsource/ibm-plex-mono/files/*-latin-500-normal.woff"],
+    "/drops/[id]/winner/[did]/opengraph-image": ["./node_modules/@fontsource/big-shoulders-stencil-display/files/*-latin-900-normal.woff", "./node_modules/@fontsource/ibm-plex-mono/files/*-latin-500-normal.woff"],
+  },
   webpack: (config) => {
     // wagmi's optional connectors reach for node-only packages.
     config.externals.push("pino-pretty", "lokijs", "encoding");

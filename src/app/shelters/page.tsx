@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { api } from "@/client/api";
-import { useAction, useApi } from "@/client/hooks";
+import { useAction, useApi, useMySurvivors } from "@/client/hooks";
 import type { MySurvivors, ShelterView } from "@/client/types";
 import { LevelPip, ShelterScene, SurvivorArt } from "@/components/game";
 import { Gate } from "@/components/Shell";
@@ -73,7 +73,7 @@ function Shelters() {
 
 function Establish({ preselect }: { preselect: number | null }) {
   const router = useRouter();
-  const { data, isLoading } = useApi<MySurvivors>("/api/survivors");
+  const { data, isLoading } = useMySurvivors();
   const free = (data?.survivors ?? []).filter((s) => !s.shelter);
   const [primary, setPrimary] = useState<number | null>(preselect);
   const [name, setName] = useState("");

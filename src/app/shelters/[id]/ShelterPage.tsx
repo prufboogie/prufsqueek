@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/client/api";
 import { when } from "@/client/format";
-import { useAction, useApi, useMe } from "@/client/hooks";
+import { useAction, useApi, useMe, useMySurvivors } from "@/client/hooks";
 import { toast } from "@/client/store";
 import type { DropDetail, DropsIndex, MySurvivors, ShelterDetail } from "@/client/types";
 import { ActivityFeed, LevelPip, ShelterScene, SurvivorArt } from "@/components/game";
@@ -161,7 +161,7 @@ function MemberSheet({ s, m, owner, onClose }: { s: ShelterDetail; m: ShelterDet
 }
 
 function BringIn({ s }: { s: ShelterDetail }) {
-  const { data } = useApi<MySurvivors>("/api/survivors");
+  const { data } = useMySurvivors();
   const candidates = (data?.survivors ?? []).filter((x) => x.shelter?.id !== s.id && x.shelter?.role !== "PRIMARY");
   const full = s.population >= s.capacity;
   const stack = useAction((x: { tokenId: number; move: boolean }) => api(`/api/shelters/${s.id}`, { body: { action: "stack", ...x } }), { success: (_o, x) => `Survivor #${x.tokenId} moved into ${s.name}.` });

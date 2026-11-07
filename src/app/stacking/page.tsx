@@ -3,7 +3,7 @@ import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
 import { api, ApiError } from "@/client/api";
-import { useApi } from "@/client/hooks";
+import { useApi, useMySurvivors } from "@/client/hooks";
 import { toast } from "@/client/store";
 import type { MySurvivors, ShelterView, SurvivorItem } from "@/client/types";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,7 +32,7 @@ function zoneAt(x: number, y: number): string | null {
 
 function Bay() {
   const qc = useQueryClient();
-  const sv = useApi<MySurvivors>("/api/survivors");
+  const sv = useMySurvivors();
   const sh = useApi<{ shelters: ShelterView[] }>("/api/shelters");
   const [hover, setHover] = useState<string | null>(null);
   const [selected, setSelected] = useState<Token | null>(null);

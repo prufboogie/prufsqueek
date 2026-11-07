@@ -2,3 +2,6 @@ node_modules
 .next
 .env
 *.tsbuildinfo
+.vercel
+.env*
+.admin-password.txt

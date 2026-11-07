@@ -161,6 +161,17 @@ describe("shelters and stacking", () => {
     expect(r.tokenIds).toEqual([1, 2]);
   });
 
+  it("accepts the browser's list when the API blocks the server, but only Survivors the wallet holds", async () => {
+    const [p, other] = [await player(), await player()];
+    chain.give(p.address, [1, 2]);
+    chain.give(other.address, [3]);
+    chain.apiDown = true;
+    const r = await syncPlayer(p.userId, [1, 2, 3, 4]);
+    expect(r.source).toBe("browser");
+    expect(r.tokenIds).toEqual([1, 2]);
+    expect(await db.survivor.findUnique({ where: { tokenId: 3 } })).toBeNull();
+  });
+
   it("changes nothing when Sepolia can't be read", async () => {
     const p = await player();
     chain.give(p.address, [1]);
