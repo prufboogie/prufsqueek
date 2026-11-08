@@ -55,3 +55,7 @@ npx vitest run
 ## Deploy
 
 Any Node host with Postgres works, for example Vercel + Neon. Set the environment variables, run `npx prisma migrate deploy` and `npm run build && npm start`. The scheduler advances drops on page loads, but point a cron at `/api/cron/tick` (`Authorization: Bearer $CRON_SECRET`) every few minutes so snapshots happen on time with no visitors. `npm run tick` does the same from a shell.
+
+## Squeekchain builder programme
+
+squeekchain-project: 4aaab249-aed5-4a46-a75d-b1cecc532dcd

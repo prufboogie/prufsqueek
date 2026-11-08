@@ -85,11 +85,11 @@ function Account() {
   );
 }
 
-export function Shell({ children }: { children: ReactNode }) {
+export function Shell({ children, runAtRoot = false }: { children: ReactNode; runAtRoot?: boolean }) {
   const path = usePathname();
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   // Ash Run takes the whole screen.
-  if (path === "/run") {
+  if (path === "/run" || (runAtRoot && path === "/")) {
     return (
       <>
         {children}
